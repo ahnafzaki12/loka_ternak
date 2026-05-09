@@ -1,0 +1,12 @@
+# Ignore node_modules untuk kedua project
+backend-express/node_modules
+loka_ternak/node_modules
+
+# Ignore environment variables (SANGAT PENTING)
+backend-express/.env
+loka_ternak/.env.local
+loka_ternak/.env
+
+# Lain-lain
+.DS_Store
+loka_ternak/.next/
