@@ -11,7 +11,7 @@ app.use(express.json()); // Agar bisa menerima body format JSON
 
 // Route Contoh
 app.get('/api/halo', (req, res) => {
-    res.json({ pesan: "Halo dari Express JS!" });
+    res.json({ pesan: "Halo dari Express JS" });
 });
 
 app.listen(PORT, () => {
