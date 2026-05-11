@@ -1,13 +1,166 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- AUTHENTICATION & USERS [cite: 83, 84, 294] ---
+model User {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  role        Role     @relation(fields: [roleId], references: [id])
+  roleId      String
+  activities  EmployeeActivity[]
+  createdAt   DateTime @default(now())
+}
+
+model Role {
+  id    String @id @default(uuid())
+  name  String @unique // ADMIN atau WORKER [cite: 51, 61]
+  users User[]
+}
+
+// --- LIVESTOCK MANAGEMENT [cite: 158, 159, 160, 294] ---
+model Livestock {
+  id              String   @id @default(uuid())
+  livestockCode   String   @unique // ID ternak unik [cite: 118]
+  name            String
+  type            String   // Sapi, Kambing, dll
+  breed           String   // Ras [cite: 121]
+  gender          String
+  birthDate       DateTime
+  initialWeight   Float
+  currentWeight   Float
+  status          String   // Sehat, Sakit, Dijual, Mati, Karantina [cite: 146-151]
+  imageUrl        String?  // Untuk Vercel Blob [cite: 126]
+  
+  weights         LivestockWeight[]
+  healthRecords   LivestockHealthRecord[]
+  vaccines        LivestockVaccine[]
+  activities      LivestockActivity[]
+  feedUsages      FeedUsage[]
+  
+  createdAt       DateTime @default(now())
+}
+
+model LivestockWeight {
+  id          String    @id @default(uuid())
+  weight      Float
+  recordedAt  DateTime  @default(now())
+  livestock   Livestock @relation(fields: [livestockId], references: [id])
+  livestockId String
+}
+
+// --- FEED MANAGEMENT [cite: 186, 187, 188, 295] ---
+model FeedItem {
+  id            String   @id @default(uuid())
+  name          String
+  stock         Float
+  unit          String   // kg, liter, dll
+  minimumStock  Float    // Untuk alert stok menipis [cite: 173]
+  category      FeedCategory @relation(fields: [categoryId], references: [id])
+  categoryId    String
+  usage         FeedUsage[]
+  createdAt     DateTime @default(now())
+}
+
+model FeedCategory {
+  id        String     @id @default(uuid())
+  name      String     @unique // Rumput, Konsentrat, dll [cite: 176-178]
+  items     FeedItem[]
+}
+
+model FeedUsage {
+  id            String    @id @default(uuid())
+  quantity      Float
+  date          DateTime  @default(now())
+  livestock     Livestock @relation(fields: [livestockId], references: [id])
+  livestockId   String
+  feedItem      FeedItem  @relation(fields: [feedItemId], references: [id])
+  feedItemId    String
+}
+
+// --- HEALTH MANAGEMENT [cite: 211, 212, 213, 294, 295] ---
+model LivestockHealthRecord {
+  id          String    @id @default(uuid())
+  disease     String
+  symptom     String
+  treatment   String
+  medicine    String
+  livestock   Livestock @relation(fields: [livestockId], references: [id])
+  livestockId String
+  createdAt   DateTime  @default(now())
+}
+
+model Vaccine {
+  id        String             @id @default(uuid())
+  name      String
+  livestock LivestockVaccine[]
+}
+
+model LivestockVaccine {
+  id          String    @id @default(uuid())
+  scheduledAt DateTime
+  givenAt     DateTime?
+  livestock   Livestock @relation(fields: [livestockId], references: [id])
+  livestockId String
+  vaccine     Vaccine   @relation(fields: [vaccineId], references: [id])
+  vaccineId   String
+}
+
+// --- FINANCIAL MANAGEMENT [cite: 240, 241, 295] ---
+model FinancialTransaction {
+  id              String            @id @default(uuid())
+  amount          Float
+  type            String            // INCOME atau EXPENSE [cite: 231, 232]
+  description     String
+  transactionDate DateTime          @default(now())
+  category        FinancialCategory @relation(fields: [categoryId], references: [id])
+  categoryId      String
+}
+
+model FinancialCategory {
+  id           String                 @id @default(uuid())
+  name         String
+  type         String                 // INCOME atau EXPENSE
+  transactions FinancialTransaction[]
+}
+
+// --- INVENTORY & LOGS [cite: 260, 261, 276, 289, 296] ---
+model InventoryItem {
+  id           String   @id @default(uuid())
+  name         String
+  stock        Float
+  unit         String
+  type         String   // Obat, Peralatan, dll [cite: 252-255]
+  createdAt    DateTime @default(now())
+}
+
+model EmployeeActivity {
+  id        String   @id @default(uuid())
+  action    String   // Deskripsi aktivitas
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+}
+
+model LivestockActivity {
+  id          String    @id @default(uuid())
+  description String
+  livestock   Livestock @relation(fields: [livestockId], references: [id])
+  livestockId String
+  createdAt   DateTime  @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
