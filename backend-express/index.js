@@ -15,12 +15,6 @@ app.get('/', (req, res) => {
     res.send('Backend berjalan!');
 });
 
-app.get('/api/halo', (req, res) => {
-    res.json({
-        pesan: 'Halo dari Express JS'
-    });
-});
-
 // Gunakan Auth Routes 
 app.use('/api/auth', authRoutes);
 
