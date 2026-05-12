@@ -1,25 +1,17 @@
 const express = require('express');
 const app = express();
+const authRoutes = require('./src/routes/authRoutes');
 const port = 5001;
 
-// Middleware untuk membaca request body berbentuk JSON
 app.use(express.json());
 
-// Route dasar (Metode GET)
+// Routes
+app.use('/api/auth', authRoutes);
+
 app.get('/', (req, res) => {
-    res.send('Halo! Backend Express-mu berhasil berjalan.');
+    res.send('LokaTernak API is Berjalan...');
 });
 
-// Contoh route lain dengan metode POST
-app.post('/api/data', (req, res) => {
-    const dataDariUser = req.body;
-    res.json({
-        message: 'Data berhasil diterima!',
-        data: dataDariUser
-    });
-});
-
-// Menjalankan server
 app.listen(port, () => {
     console.log(`Server berjalan di http://localhost:${port}`);
 });
