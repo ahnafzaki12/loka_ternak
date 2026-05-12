@@ -1,10 +1,198 @@
 generator client {
   provider = "prisma-client-js"
-  // Output kustom boleh saja, tapi defaultnya biasanya dikosongkan 
-  // agar lebih mudah di-import (import { PrismaClient } from '@prisma/client')
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum JenisKelamin {
+  Jantan
+  Betina
+}
+
+enum StatusTernak {
+  Sehat
+  Sakit
+  Pemulihan
+}
+
+enum TipeKesehatanHistory {
+  Penyakit
+  Vaksin
+  Reminder
+}
+
+enum KategoriPakan {
+  Hijauan
+  Konsentrat
+  VitaminObat // "Vitamin/Obat"
+}
+
+enum KategoriInventory {
+  Pakan
+  Obat
+  Peralatan
+  Lainnya
+}
+
+enum JenisTransaksi {
+  Pemasukan
+  Pengeluaran
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// TERNAK (LIVESTOCK)
+// ============================================================
+
+model Ternak {
+  id           String       @id @default(cuid())
+  tag          String       @unique // e.g. "KMB-001"
+  jenis        String // Breed e.g. "Etawa", "Boer"
+  berat        Float // Current weight in kg
+  tinggi       Float // Current height in cm
+  kelamin      JenisKelamin
+  status       StatusTernak @default(Sehat)
+  umurBulan    Int
+  tanggalLahir DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  riwayatPertumbuhan PertumbuhanHistory[]
+  riwayatPakan       PakanHistory[]
+  riwayatKesehatan   KesehatanHistory[]
+  aktivitas          AktivitasHistory[]
+}
+
+model PertumbuhanHistory {
+  id      String   @id @default(cuid())
+  tanggal DateTime @default(now())
+  berat   Float // Weight in kg at this point
+  tinggi  Float // Height in cm at this point
+
+  ternak   Ternak @relation(fields: [ternakId], references: [id], onDelete: Cascade)
+  ternakId String
+
+  @@index([ternakId])
+}
+
+model PakanHistory {
+  id         String   @id @default(cuid())
+  tanggal    DateTime
+  waktu      String // e.g. "07:00"
+  jenisPakan String // e.g. "Rumput Gajah"
+  jumlah     String // e.g. "2 kg" or "500 gr"
+
+  ternak   Ternak @relation(fields: [ternakId], references: [id], onDelete: Cascade)
+  ternakId String
+
+  @@index([ternakId])
+}
+
+model KesehatanHistory {
+  id       String               @id @default(cuid())
+  tanggal  DateTime
+  tipe     TipeKesehatanHistory
+  kondisi  String // Condition/title e.g. "Demam ringan"
+  tindakan String // Action taken e.g. "Diberikan antibiotik"
+
+  ternak   Ternak @relation(fields: [ternakId], references: [id], onDelete: Cascade)
+  ternakId String
+
+  @@index([ternakId])
+}
+
+model AktivitasHistory {
+  id        String   @id @default(cuid())
+  tanggal   DateTime
+  waktu     String // e.g. "08:00"
+  aktivitas String // e.g. "Dilepas di padang rumput"
+
+  ternak   Ternak @relation(fields: [ternakId], references: [id], onDelete: Cascade)
+  ternakId String
+
+  @@index([ternakId])
+}
+
+// ============================================================
+// PAKAN (FEED MANAGEMENT)
+// ============================================================
+
+model Pakan {
+  id            String        @id @default(cuid())
+  nama          String // e.g. "Rumput Gajah"
+  kategori      KategoriPakan
+  stokKg        Float // Current stock in kg
+  batasKritisKg Float // Critical threshold in kg
+  hargaPerKg    Float // Price per kg
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  penggunaanList PenggunaanPakan[]
+}
+
+model PenggunaanPakan {
+  id         String   @id @default(cuid())
+  tanggal    DateTime
+  jumlahKg   Float
+  keterangan String?
+
+  pakan   Pakan  @relation(fields: [pakanId], references: [id], onDelete: Restrict)
+  pakanId String
+
+  @@index([pakanId])
+}
+
+// ============================================================
+// INVENTORY (GENERAL SUPPLIES)
+// ============================================================
+
+model InventoryItem {
+  id             String            @id @default(cuid())
+  nama           String // e.g. "Vaksin PMK"
+  kategori       KategoriInventory
+  stok           Float // Current stock amount
+  minStok        Float // Minimum stock threshold for alert
+  satuan         String // Unit e.g. "kg", "botol", "dosis", "pcs"
+  terakhirUpdate DateTime          @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// KEUANGAN (FINANCE)
+// ============================================================
+
+model Transaksi {
+  id         String         @id @default(cuid())
+  tanggal    DateTime
+  jenis      JenisTransaksi
+  kategori   String // Flexible string to support both income & expense categories
+  nominal    Float
+  keterangan String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

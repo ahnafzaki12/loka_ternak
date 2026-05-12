@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const port = 3000;
+const port = 5001;
 
 // Middleware untuk membaca request body berbentuk JSON
 app.use(express.json());
