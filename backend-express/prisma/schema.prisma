@@ -1,0 +1,10 @@
+generator client {
+  provider = "prisma-client-js"
+  // Output kustom boleh saja, tapi defaultnya biasanya dikosongkan 
+  // agar lebih mudah di-import (import { PrismaClient } from '@prisma/client')
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
