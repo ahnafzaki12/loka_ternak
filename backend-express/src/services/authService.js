@@ -9,6 +9,7 @@ const registerUser = async (userData) => {
             name: userData.name,
             email: userData.email,
             password: hashedPassword,
+            role: userData.role || 'WORKER',
         },
     });
 };
