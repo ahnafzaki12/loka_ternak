@@ -5,7 +5,7 @@ const roles = ['OWNER', 'WORKER'];
 
 const register = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role } = req.body || {};
 
         // Validasi sederhana
         if (!name || !email || !password) {
@@ -53,6 +53,39 @@ const register = async (req, res) => {
     }
 };
 
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body || {};
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email dan password wajib diisi" });
+        }
+
+        const user = await authService.loginUser({ email, password });
+        const { password: _, ...userWithoutPassword } = user;
+        const token = generateToken({
+            id: user.id,
+            email: user.email,
+            role: user.role,
+        });
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: JWT_EXPIRES_IN_SECONDS * 1000,
+        });
+
+        res.status(200).json({
+            message: "Login berhasil",
+            token,
+            data: userWithoutPassword,
+        });
+    } catch (error) {
+        res.status(401).json({ message: error.message });
+    }
+};
+
 const me = (req, res) => {
     res.status(200).json({
         message: "User berhasil diambil",
@@ -60,4 +93,4 @@ const me = (req, res) => {
     });
 };
 
-module.exports = { register, me };
+module.exports = { register, login, me };
