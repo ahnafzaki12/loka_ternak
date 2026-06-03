@@ -2,11 +2,51 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("lokaternak7@gmail.com");
+  const [password, setPassword] = useState("password123");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+      
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Gagal masuk. Silakan coba lagi.");
+      }
+
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
+      router.push("/");
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan pada server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-white">
@@ -47,15 +87,22 @@ export default function LoginPage() {
         </div>
 
         {/* Form */}
-        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+        <form className="space-y-4" onSubmit={handleLogin}>
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200">
+              {error}
+            </div>
+          )}
           <div>
             <label htmlFor="login-email" className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Email</label>
             <input
               id="login-email"
               type="email"
-              defaultValue="admin@lokaternak.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
               placeholder="contoh@email.com"
+              required
             />
           </div>
 
@@ -65,9 +112,11 @@ export default function LoginPage() {
               <input
                 id="login-password"
                 type={showPassword ? "text" : "password"}
-                defaultValue="password123"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all pr-12"
                 placeholder="••••••••"
+                required
               />
               <button
                 type="button"
@@ -94,14 +143,13 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          <Link href="/" className="block">
-            <button
-              type="submit"
-              className="w-full py-3.5 mt-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl transition-all shadow-md shadow-emerald-900/20 text-sm tracking-wide"
-            >
-              Masuk
-            </button>
-          </Link>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 mt-2 bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-700/70 text-white font-semibold rounded-xl transition-all shadow-md shadow-emerald-900/20 text-sm tracking-wide"
+          >
+            {loading ? "Memproses..." : "Masuk"}
+          </button>
         </form>
 
         <p className="mt-6 text-sm text-gray-500 text-center">
