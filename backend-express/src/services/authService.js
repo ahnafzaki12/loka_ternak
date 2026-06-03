@@ -32,4 +32,11 @@ const loginUser = async ({ email, password }) => {
     return user;
 };
 
-module.exports = { registerUser, loginUser };
+const getUserById = async (id) => {
+    return await prisma.user.findUnique({
+        where: { id },
+        select: { id: true, name: true, email: true, role: true }
+    });
+};
+
+module.exports = { registerUser, loginUser, getUserById };

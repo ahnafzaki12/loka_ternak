@@ -86,11 +86,29 @@ const login = async (req, res) => {
     }
 };
 
-const me = (req, res) => {
-    res.status(200).json({
-        message: "User berhasil diambil",
-        data: req.user,
+const logout = (req, res) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
     });
+
+    res.status(200).json({ message: "Logout berhasil" });
 };
 
-module.exports = { register, login, me };
+const me = async (req, res) => {
+    try {
+        const user = await authService.getUserById(req.user.id);
+        if (!user) {
+            return res.status(404).json({ message: "User tidak ditemukan" });
+        }
+        res.status(200).json({
+            message: "User berhasil diambil",
+            data: user,
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { register, login, logout, me };

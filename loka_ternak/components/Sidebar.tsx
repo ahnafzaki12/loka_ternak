@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   ClipboardList,
@@ -31,7 +31,54 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<{name: string, role: string} | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+        const res = await fetch(`${apiUrl}/api/auth/me`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.data);
+        } else {
+          localStorage.removeItem("token");
+          router.push("/login");
+        }
+      } catch (error) {
+        console.error("Failed to fetch user", error);
+      }
+    };
+    fetchUser();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+      await fetch(`${apiUrl}/api/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error("Logout failed", error);
+    } finally {
+      localStorage.removeItem("token");
+      router.push("/login");
+    }
+  };
 
   return (
     <aside
@@ -95,17 +142,22 @@ export default function Sidebar() {
           collapsed ? "justify-center" : "justify-start"
         )}>
           <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-emerald-700 font-bold text-sm">A</span>
+            <span className="text-emerald-700 font-bold text-sm">
+              {user?.name ? user.name.charAt(0).toUpperCase() : "A"}
+            </span>
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-gray-900">Admin</span>
-              <span className="text-xs text-gray-500">Peternakan Utama</span>
+              <span className="text-sm font-semibold text-gray-900">{user?.name || "Loading..."}</span>
+              <span className="text-xs text-gray-500">
+                {user?.role === 'OWNER' ? 'Pemilik' : (user?.role === 'WORKER' ? 'Pekerja' : '')}
+              </span>
             </div>
           )}
         </div>
         {/* Logout */}
         <button
+          onClick={handleLogout}
           className={cn(
             "mt-4 flex items-center gap-3 px-3 py-2 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors w-full",
             collapsed ? "justify-center" : "justify-start"
