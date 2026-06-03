@@ -8,16 +8,36 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setMessage("");
+    setError("");
     
-    // Simulate API call
-    setTimeout(() => {
-      setMessage("Jika email tersebut terdaftar, kami telah mengirimkan tautan untuk mengatur ulang password.");
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+      const response = await fetch(`${apiUrl}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Terjadi kesalahan. Silakan coba lagi.");
+      }
+
+      setMessage(data.message || "Jika email tersebut terdaftar, kami telah mengirimkan tautan untuk mengatur ulang password.");
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan pada server.");
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -42,6 +62,11 @@ export default function ForgotPasswordPage() {
           {message && (
             <div className="p-4 bg-emerald-50 text-emerald-700 text-sm rounded-xl border border-emerald-200 text-center font-medium">
               {message}
+            </div>
+          )}
+          {error && (
+            <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200 text-center font-medium">
+              {error}
             </div>
           )}
 

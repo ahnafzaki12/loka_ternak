@@ -1,37 +1,63 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Lock, ArrowLeft, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   const hasMinLength = password.length >= 8;
   const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
   
-  const isFormValid = hasMinLength && hasSpecialChar && passwordsMatch;
+  const isFormValid = hasMinLength && hasSpecialChar && passwordsMatch && !!token;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
     
     setLoading(true);
+    setMessage("");
+    setError("");
     
-    // Simulate API call
-    setTimeout(() => {
-      setMessage("Password berhasil diubah. Silakan masuk dengan password baru Anda.");
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
+      const response = await fetch(`${apiUrl}/api/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Gagal mengatur ulang password.");
+      }
+
+      setMessage("Password berhasil diubah. Mengarahkan ke halaman login...");
+      setTimeout(() => {
+        router.push("/login");
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan pada server.");
+    } finally {
       setLoading(false);
-      setPassword("");
-      setConfirmPassword("");
-    }, 1500);
+    }
   };
 
   return (
@@ -53,9 +79,19 @@ export default function ResetPasswordPage() {
 
         {/* Form */}
         <form className="space-y-5" onSubmit={handleSubmit}>
+          {!token && (
+            <div className="p-4 bg-yellow-50 text-yellow-700 text-sm rounded-xl border border-yellow-200 text-center font-medium mb-4">
+              Link reset password tidak valid atau tidak ditemukan token.
+            </div>
+          )}
           {message && (
             <div className="p-4 bg-emerald-50 text-emerald-700 text-sm rounded-xl border border-emerald-200 text-center font-medium">
               {message}
+            </div>
+          )}
+          {error && (
+            <div className="p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-200 text-center font-medium">
+              {error}
             </div>
           )}
 
@@ -141,5 +177,17 @@ export default function ResetPasswordPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-500 font-medium text-sm">Memuat...</div>
+      </div>
+    }>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
