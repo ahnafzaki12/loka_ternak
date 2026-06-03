@@ -39,4 +39,25 @@ const getUserById = async (id) => {
     });
 };
 
-module.exports = { registerUser, loginUser, getUserById };
+const getUserByEmail = async (email) => {
+    return await prisma.user.findUnique({
+        where: { email },
+    });
+};
+
+const updatePassword = async ({ userId, password }) => {
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    return await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+    });
+};
+
+module.exports = {
+    registerUser,
+    loginUser,
+    getUserById,
+    getUserByEmail,
+    updatePassword,
+};

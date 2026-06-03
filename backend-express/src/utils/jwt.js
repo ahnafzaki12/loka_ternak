@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 
 const JWT_EXPIRES_IN_SECONDS = 24 * 60 * 60;
+const RESET_PASSWORD_EXPIRES_IN_SECONDS = 15 * 60;
 
 const base64UrlEncode = (value) => {
     return Buffer.from(JSON.stringify(value))
@@ -26,7 +27,7 @@ const getJwtSecret = () => {
     return process.env.JWT_SECRET;
 };
 
-const generateToken = (payload) => {
+const generateToken = (payload, expiresInSeconds = JWT_EXPIRES_IN_SECONDS) => {
     const now = Math.floor(Date.now() / 1000);
     const header = {
         alg: 'HS256',
@@ -36,7 +37,7 @@ const generateToken = (payload) => {
     const body = {
         ...payload,
         iat: now,
-        exp: now + JWT_EXPIRES_IN_SECONDS,
+        exp: now + expiresInSeconds,
     };
 
     const encodedHeader = base64UrlEncode(header);
@@ -78,6 +79,7 @@ const verifyToken = (token) => {
 
 module.exports = {
     JWT_EXPIRES_IN_SECONDS,
+    RESET_PASSWORD_EXPIRES_IN_SECONDS,
     generateToken,
     verifyToken,
 };
