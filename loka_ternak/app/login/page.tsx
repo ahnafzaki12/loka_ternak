@@ -138,7 +138,7 @@ export default function LoginPage() {
               />
               <span className="text-sm text-gray-600">Ingat saya</span>
             </label>
-            <Link href="#" className="text-sm font-semibold text-gray-800 underline underline-offset-4 hover:text-emerald-600 transition-colors">
+            <Link href="/forgot-password" className="text-sm font-semibold text-gray-800 underline underline-offset-4 hover:text-emerald-600 transition-colors">
               Lupa Password?
             </Link>
           </div>
