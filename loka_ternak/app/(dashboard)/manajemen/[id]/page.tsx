@@ -1,8 +1,7 @@
 "use client";
 
-import React, { use } from "react";
+import React, { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { getTernakById, Ternak } from "@/lib/mockData";
 import { ArrowLeft, Edit2, Calendar, Scale, Ruler, HeartPulse, Clock, Activity, Bone, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -16,6 +15,7 @@ import {
   Legend
 } from "recharts";
 
+// Definisikan tipe untuk detail ternak sesuai dengan data yang diambil dari backend
 interface DetailTernakProps {
   params: Promise<{ id: string }>;
 }
@@ -23,7 +23,39 @@ interface DetailTernakProps {
 export default function DetailTernak({ params }: DetailTernakProps) {
   const router = useRouter();
   const resolvedParams = use(params);
-  const ternak = getTernakById(resolvedParams.id);
+  const [ternak, setTernak] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDetail = async () => {
+      try {
+        const res = await fetch(`http://localhost:5001/api/ternak/${resolvedParams.id}`, {
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+          }
+        });
+        if (res.ok) {
+          const result = await res.json();
+          setTernak(result.data);
+        } else {
+          console.error("Gagal mengambil data ternak");
+        }
+      } catch (error) {
+        console.error("Error fetching detail:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDetail();
+  }, [resolvedParams.id]);
+
+  if (loading) {
+    return (
+      <div className="p-8 max-w-7xl mx-auto flex items-center justify-center h-[50vh]">
+        <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   if (!ternak) {
     return (
@@ -59,9 +91,17 @@ export default function DetailTernak({ params }: DetailTernakProps) {
 
       {/* Main Profile Card */}
       <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center md:items-start gap-8">
-        <div className="w-32 h-32 bg-emerald-50 rounded-full flex items-center justify-center shrink-0 border-4 border-white shadow-md">
-          <span className="text-4xl font-bold text-emerald-600">{ternak.tag.split('-')[1]}</span>
-        </div>
+        {ternak.gambarUrl ? (
+          <img 
+            src={ternak.gambarUrl} 
+            alt={ternak.tag} 
+            className="w-32 h-32 rounded-full object-cover shrink-0 border-4 border-white shadow-md"
+          />
+        ) : (
+          <div className="w-32 h-32 bg-emerald-50 rounded-full flex items-center justify-center shrink-0 border-4 border-white shadow-md">
+            <span className="text-4xl font-bold text-emerald-600">{ternak.tag.split('-')[1] || ternak.tag.substring(0, 2)}</span>
+          </div>
+        )}
 
         <div className="flex-1 text-center md:text-left">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
@@ -124,18 +164,22 @@ export default function DetailTernak({ params }: DetailTernakProps) {
               </h3>
             </div>
             <div className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={ternak.riwayatPertumbuhan} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                  <XAxis dataKey="tanggal" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
-                  <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fill: '#10b981', fontSize: 12 }} dx={-10} domain={['dataMin - 2', 'dataMax + 2']} />
-                  <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#3b82f6', fontSize: 12 }} dx={10} domain={['dataMin - 2', 'dataMax + 2']} />
-                  <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <Legend verticalAlign="top" height={36} iconType="circle" />
-                  <Line yAxisId="left" type="monotone" dataKey="berat" name="Berat (kg)" stroke="#10b981" strokeWidth={3} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
-                  <Line yAxisId="right" type="monotone" dataKey="tinggi" name="Tinggi (cm)" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
-                </LineChart>
-              </ResponsiveContainer>
+              {ternak.riwayatPertumbuhan && ternak.riwayatPertumbuhan.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={ternak.riwayatPertumbuhan} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <XAxis dataKey="tanggal" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} tickFormatter={(val) => new Date(val).toLocaleDateString('id-ID')} />
+                    <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{ fill: '#10b981', fontSize: 12 }} dx={-10} domain={['dataMin - 2', 'dataMax + 2']} />
+                    <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#3b82f6', fontSize: 12 }} dx={10} domain={['dataMin - 2', 'dataMax + 2']} />
+                    <RechartsTooltip labelFormatter={(label) => new Date(label).toLocaleDateString('id-ID')} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Legend verticalAlign="top" height={36} iconType="circle" />
+                    <Line yAxisId="left" type="monotone" dataKey="berat" name="Berat (kg)" stroke="#10b981" strokeWidth={3} activeDot={{ r: 6, strokeWidth: 0, fill: '#10b981' }} />
+                    <Line yAxisId="right" type="monotone" dataKey="tinggi" name="Tinggi (cm)" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">Belum ada riwayat pertumbuhan.</div>
+              )}
             </div>
           </div>
 
@@ -145,11 +189,11 @@ export default function DetailTernak({ params }: DetailTernakProps) {
               <Clock className="w-5 h-5 text-emerald-600" />
               Aktivitas Terkini
             </h3>
-            {ternak.aktivitas.length === 0 ? (
+            {(!ternak.aktivitas || ternak.aktivitas.length === 0) ? (
               <p className="text-gray-500 text-center py-4">Belum ada catatan aktivitas.</p>
             ) : (
               <div className="space-y-4">
-                {ternak.aktivitas.map((akt, index) => (
+                {ternak.aktivitas.map((akt: any, index: number) => (
                   <div key={akt.id} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div className="w-3 h-3 bg-emerald-200 rounded-full border-2 border-white ring-2 ring-emerald-50 mt-1"></div>
@@ -174,11 +218,11 @@ export default function DetailTernak({ params }: DetailTernakProps) {
               <HeartPulse className="w-5 h-5 text-red-500" />
               Riwayat Kesehatan
             </h3>
-            {ternak.riwayatKesehatan.length === 0 ? (
+            {(!ternak.riwayatKesehatan || ternak.riwayatKesehatan.length === 0) ? (
               <p className="text-gray-500 text-center py-4">Belum ada catatan medis.</p>
             ) : (
               <div className="space-y-4">
-                {ternak.riwayatKesehatan.map(kes => (
+                {ternak.riwayatKesehatan.map((kes: any) => (
                   <div key={kes.id} className="bg-red-50/50 p-4 rounded-2xl border border-red-100/50">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-semibold text-gray-900">{kes.kondisi}</h4>
@@ -197,11 +241,11 @@ export default function DetailTernak({ params }: DetailTernakProps) {
               <Bone className="w-5 h-5 text-amber-500" />
               Jadwal & Riwayat Pakan
             </h3>
-            {ternak.riwayatPakan.length === 0 ? (
+            {(!ternak.riwayatPakan || ternak.riwayatPakan.length === 0) ? (
               <p className="text-gray-500 text-center py-4">Belum ada catatan pakan.</p>
             ) : (
               <div className="space-y-3">
-                {ternak.riwayatPakan.map(pak => (
+                {ternak.riwayatPakan.map((pak: any) => (
                   <div key={pak.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100">
                     <div className="flex items-center gap-3">
                       <div className="bg-amber-100 text-amber-700 p-2 rounded-lg text-xs font-bold w-12 text-center">

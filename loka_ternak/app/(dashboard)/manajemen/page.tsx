@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, Search, Filter, Activity, TrendingUp, AlertTriangle } from "lucide-react";
 import Modal from "@/components/Modal";
 import DashboardCard from "@/components/DashboardCard";
 import { cn } from "@/lib/utils";
-import { Ternak, mockDataTernak } from "@/lib/mockData";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -17,10 +16,25 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+interface Ternak {
+  id: string;
+  tag: string;
+  jenis: string;
+  berat: number;
+  tinggi: number;
+  kelamin: string;
+  status: string;
+  gambarUrl?: string;
+  gambarPublicId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export default function ManajemenTernak() {
   const router = useRouter();
-  const [data, setData] = useState<Ternak[]>(mockDataTernak);
+  const [data, setData] = useState<Ternak[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   
   // Modal States
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -28,11 +42,37 @@ export default function ManajemenTernak() {
   
   // Selected item for Edit/Delete
   const [selectedItem, setSelectedItem] = useState<Ternak | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   
   // Form State
   const [formData, setFormData] = useState<Partial<Ternak>>({
     tag: "", jenis: "", berat: 0, tinggi: 0, kelamin: "Jantan", status: "Sehat"
   });
+
+  const fetchTernak = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch("http://localhost:5001/api/ternak", {
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token") || ""}`, // asumsikan token bisa didapat dari localStorage atau cookie diatur otomatis
+        }
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setData(result.data);
+      } else {
+        console.error("Gagal mengambil data ternak:", result.message);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTernak();
+  }, []);
 
   // Filtered Data
   const filteredData = data.filter(item => 
@@ -59,6 +99,7 @@ export default function ManajemenTernak() {
   // Handlers
   const handleOpenCreate = () => {
     setSelectedItem(null);
+    setSelectedImage(null);
     setFormData({ tag: "", jenis: "", berat: 0, tinggi: 0, kelamin: "Jantan", status: "Sehat" });
     setIsFormOpen(true);
   };
@@ -66,7 +107,15 @@ export default function ManajemenTernak() {
   const handleOpenEdit = (e: React.MouseEvent, item: Ternak) => {
     e.stopPropagation();
     setSelectedItem(item);
-    setFormData(item);
+    setSelectedImage(null);
+    setFormData({
+      tag: item.tag,
+      jenis: item.jenis,
+      berat: item.berat,
+      tinggi: item.tinggi,
+      kelamin: item.kelamin,
+      status: item.status
+    });
     setIsFormOpen(true);
   };
 
@@ -76,33 +125,78 @@ export default function ManajemenTernak() {
     setIsDeleteOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedItem) {
-      // Update
-      setData(data.map(item => item.id === selectedItem.id ? { ...item, ...formData } as Ternak : item));
-    } else {
-      // Create
-      const newItem: Ternak = {
-        ...formData as Ternak,
-        id: Math.random().toString(36).substr(2, 9),
-        umurBulan: 0,
-        tanggalLahir: new Date().toISOString().split('T')[0],
-        riwayatPertumbuhan: [],
-        riwayatPakan: [],
-        riwayatKesehatan: [],
-        aktivitas: []
-      };
-      setData([...data, newItem]);
+    try {
+      const dataToSend = new FormData();
+      if (formData.tag) dataToSend.append("tag", formData.tag);
+      if (formData.jenis) dataToSend.append("jenis", formData.jenis);
+      if (formData.berat) dataToSend.append("berat", formData.berat.toString());
+      if (formData.tinggi) dataToSend.append("tinggi", formData.tinggi.toString());
+      if (formData.kelamin) dataToSend.append("kelamin", formData.kelamin);
+      if (formData.status) dataToSend.append("status", formData.status);
+      if (selectedImage) dataToSend.append("gambar", selectedImage);
+
+      if (selectedItem) {
+        // Update
+        const res = await fetch(`http://localhost:5001/api/ternak/${selectedItem.id}`, {
+          method: 'PUT',
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+          },
+          body: dataToSend
+        });
+        if (res.ok) {
+          fetchTernak();
+          setIsFormOpen(false);
+        } else {
+          const err = await res.json();
+          alert(err.message || 'Gagal mengupdate data');
+        }
+      } else {
+        // Create
+        const res = await fetch(`http://localhost:5001/api/ternak`, {
+          method: 'POST',
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+          },
+          body: dataToSend
+        });
+        if (res.ok) {
+          fetchTernak();
+          setIsFormOpen(false);
+        } else {
+          const err = await res.json();
+          alert(err.message || 'Gagal menambahkan data');
+        }
+      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+      alert('Terjadi kesalahan saat menyimpan data');
     }
-    setIsFormOpen(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedItem) {
-      setData(data.filter(item => item.id !== selectedItem.id));
-      setIsDeleteOpen(false);
-      setSelectedItem(null);
+      try {
+        const res = await fetch(`http://localhost:5001/api/ternak/${selectedItem.id}`, {
+          method: 'DELETE',
+          headers: {
+            "Authorization": `Bearer ${localStorage.getItem("token") || ""}`
+          }
+        });
+        if (res.ok) {
+          fetchTernak();
+          setIsDeleteOpen(false);
+          setSelectedItem(null);
+        } else {
+          const err = await res.json();
+          alert(err.message || 'Gagal menghapus data');
+        }
+      } catch (error) {
+        console.error("Error deleting data:", error);
+        alert('Terjadi kesalahan saat menghapus data');
+      }
     }
   };
 
@@ -216,8 +310,19 @@ export default function ManajemenTernak() {
                       >
                         <td className="px-6 py-4 font-medium text-emerald-700">{item.tag}</td>
                         <td className="px-6 py-4 text-gray-600">
-                          <div>{item.jenis}</div>
-                          <div className="text-xs text-gray-400">{item.kelamin}</div>
+                          <div className="flex items-center gap-3">
+                            {item.gambarUrl ? (
+                              <img src={item.gambarUrl} alt={item.tag} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold border border-emerald-100">
+                                {item.tag.split('-')[1] || item.tag.substring(0, 2)}
+                              </div>
+                            )}
+                            <div>
+                              <div className="font-medium text-gray-900">{item.jenis}</div>
+                              <div className="text-xs text-gray-400">{item.kelamin}</div>
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <span className={cn(
@@ -340,6 +445,18 @@ export default function ManajemenTernak() {
                 <option value="Pemulihan">Pemulihan</option>
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Gambar Ternak (Opsional)</label>
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={e => setSelectedImage(e.target.files ? e.target.files[0] : null)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+            />
+            {selectedItem?.gambarUrl && !selectedImage && (
+              <p className="mt-1 text-xs text-gray-500">Dibiarkan kosong jika tidak ingin mengubah gambar.</p>
+            )}
           </div>
           
           <div className="mt-6 pt-4 border-t border-gray-50 flex justify-end gap-3">
