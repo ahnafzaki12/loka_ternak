@@ -79,6 +79,8 @@ model Ternak {
   status       StatusTernak @default(Sehat)
   umurBulan    Int
   tanggalLahir DateTime
+  gambarUrl    String?
+  gambarPublicId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
